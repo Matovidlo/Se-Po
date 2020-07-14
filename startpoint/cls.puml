@@ -1,0 +1,255 @@
+@startuml
+
+class PathArguments {
++args
++__init__()
+}
+PathArguments --|> argparse.ArgumentParser
+
+class PathOperation {
+PATH_DEPTH
+DOCKERFILE
++input_files : list[Path]
++input_directories : list[Path]
+#_directories : set
++cwd : Path
+#_is_logging_enabled : bool
+#_filters : list
+#_custom_configuration : Path
+
++__init__()
++directories() -> _directories
++logging() -> _is_logging_enabled
++custom_configuration() -> _custom_configuration
++filters() -> _filters
+#_categorize_files_input()
++resolve_containers()
++show_filters()
++add_filter()
++load_filters()
++add_configuration()
++create_configuration_files()
++write_configuration(configuration)
++delete_configurations()
+}
+
+PathOperation --> PathArguments
+
+' End of path operation package
+newpage
+
+interface AbstractProfile {
++{abstract}create_profile()
++{abstract}parse_profile()
+}
+
+
+class SimpleSeccompProfile {
++^create_profile()
++^parse_profile()
+}
+
+class CustomizedSeccompProfile {
++^create_profile()
++^parse_profile()
+}
+
+class SimpleApparmorProfile {
++^create_profile()
++^parse_profile()
+}
+
+class CustomizedApparmorProfile {
++^create_profile()
++^parse_profile()
+}
+
+SimpleSeccompProfile ..|> AbstractProfile
+CustomizedSeccompProfile ..|> AbstractProfile
+SimpleApparmorProfile ..|> AbstractProfile
+CustomizedApparmorProfile ..|> AbstractProfile
+
+newpage
+
+abstract class AbstractDockerImageFactory {
+#_image
+#_package_manager
++{abstract}__init__(cls_object)
++image() -> _image
++package_manager() -> _package_manager
+#_set_package_manager()
++{abstract}create_image(image, allowed_os, version)
++{abstract}create_seccomp_profile()
++{abstract}create_mac_profile()
++{abstract}unix_setup()
+}
+
+class ApparmorDockerImageFactory {
+SECCOMP
+MAC
++^create_image(operation_system,
+allowed_os, version)
++^create_seccomp_profile()
++^create_mac_profile()
++^unix_setup()
+}
+
+class CustomDockerImageFactory {
+SECCOMP
+MAC
++^create_image(operation_system,
+               allowed_os, version)
++^create_seccomp_profile()
++^create_mac_profile()
++^unix_setup()
+}
+
+interface AbstractProfile
+
+ApparmorDockerImageFactory --|> AbstractDockerImageFactory
+CustomDockerImageFactory --|> AbstractDockerImageFactory
+AbstractDockerImageFactory --> DirectoryToImageAndTools
+AbstractDockerImageFactory ..> AbstractProfile
+
+enum DirectoryToImageAndTools {
+C
+CPP
+CS
+GO
+HASKELL
+JAVA
+JAVASCRIPT
+KOTLIN
+LUA
+OCAML
+OPENCL
+PHP
+PROLOG
+PYTHON
+R
+RUBY
+RUST
+SCALA
+SMALLTALK
+SQL
+}
+
+newpage
+
+' End of Abstract profile along with docker image factory
+abstract class AbstractDockerImageFactory
+
+class CommandBuilder {
+#_commands -> str
++__init__(*args)
+-__add__(other) -> CommandBuilder
+-__str__() -> str
+}
+
+
+abstract class AbstractDockerConfiguration {
+CPP = 'C++'
+CS = 'C#'
++directory
++image
++default_tools
++{abstract} __init__()
++convert_directory_to_image(directory)
++{abstract} create_image(directory)
++{abstract} create_toolset(package_manager, tools=None)
+}
+
+abstract class AbstractToolset {
+RUN
+INSTALL
+#_package_manager
+#_tools
++first_tool
++{abstract} __init__(package_manager, tools)
+-__add__(other)
+-__iter__()
+-__next__()
++{abstract} specify_tools(tools)
++{abstract} install() -> CommandBuilder
+}
+
+' Here starts general tools
+class GeneralToolset {
+}
+
+class SimpleSecurity {
++^create_image(directory)
+}
+class CustomizedSecurity {
++^create_image(directory)
+}
+
+class ResultRetriever {
++security_results
++portability_results
++highlighter
++__init__(result_highlighter)
++retrieve()
++perform_filter()
+}
+
+class ResultHighlighter {
++user_function -> function
++args -> list
++kwargs -> dict
+#_config(*args, **kwargs)
+#_highlight(*args, **kwargs)
++highlight()
+}
+
+ResultRetriever --> ResultHighlighter
+
+
+GeneralToolset --|> AbstractToolset
+SimpleSecurity --|> AbstractDockerConfiguration
+CustomizedSecurity --|> AbstractDockerConfiguration
+
+class VirtualStarter {
+DOCKER_BUILD
+VAGRANT_BOXES
++directories
++deploy_containers()
++create_boxes()
++deploy()
+}
+
+class ConfigCreator {
+LOW
+HIGH
+POSIX
+WINDOWS
+
++__init__(directories,
+image, security_level)
++unroll_path()
++create_configuration()
+}
+AbstractToolset --> CommandBuilder
+AbstractDockerConfiguration ..> AbstractDockerImageFactory
+AbstractDockerConfiguration ..> AbstractToolset
+ConfigCreator ..> AbstractDockerConfiguration
+ConfigCreator --> PathOperation
+ConfigCreator --> CommandBuilder
+
+class RunFacade {
+#_path_subsystem -> PathOperation
+#_config_subsystem -> ConfigCreator
+#_run_subsystem -> VirtualStarter
+#_result_subsystem -> ResultRetriever
++docker_operation()
++vagrant_operation()
++operation()
+}
+
+RunFacade --* ConfigCreator
+RunFacade --* PathOperation
+RunFacade --* VirtualStarter
+RunFacade --* ResultRetriever
+
+
+@enduml

@@ -1,0 +1,16 @@
+
+# Ignore virtualenv files
+bin/
+build/
+dist/
+lib/
+lib64/
+share/
+
+*.egg-info
+.mypy_cache
+.coverage
+.project
+.settings
+
+pip-wheel-metadata/

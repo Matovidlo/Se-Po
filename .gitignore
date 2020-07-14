@@ -1,0 +1,21 @@
+.pytest_cache/
+**.vagrant/
+.eggs/
+
+# Ignore virtualenv files
+bin/
+build/
+dist/
+lib/
+lib64/
+share/
+
+**.pyc
+**.pyo
+**.swp
+**.class
+**.orig
+
+
+# Ignore pycharm files
+.idea/
