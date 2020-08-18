@@ -1,0 +1,25 @@
+
+Vagrant.configure(2) do |config|
+    # Change vm box based on the needs in teplate_build_files.py
+    config.vm.box = "centos/7"
+    config.vm.hostname = "secpovm"
+    config.vm.post_up_message = "Welcome to portability testing using vagrant."
+    config.vm.box_check_update = true
+    # Change IP address in case of colission in installed
+    # template_build_files.py
+    config.vm.network "private_network", ip: "172.168.67.89"
+    
+    # Synced folder where results will be recieved
+    config.vm.synced_folder "/home/matovidlo/USW/Security_testing_framework/Vulnerable-Code-Snippets-master/Symlink Attack/vagrant_result/", "/vagrant_data"
+    
+    # In case of wrong provider please change it in teplate_build_files.py
+    config.vm.provider "virtualbox" do |vb|
+        vb.memory = "2048"
+        vb.cpus = "2"
+    end
+    # Here will be paste commands including tools that are necessary to install.
+    # config.vm.provision "shell", inline <<-SHELL
+    # 
+    # SHELL
+    
+end

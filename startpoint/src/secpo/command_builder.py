@@ -6,6 +6,8 @@
 
 class CommandBuilder:
     RUN = 'RUN'
+    WORKDIR = 'WORKDIR'
+    COPY = 'COPY'
 
     def __init__(self, *args):
         """ Initialize command to empty string or based on arguments given. """
@@ -29,7 +31,9 @@ class CommandBuilder:
         if isinstance(other, CommandBuilder):
             if not other._commands:
                 return CommandBuilder(self._commands)
-            return CommandBuilder(self._commands + other._commands + '\n')
+            return CommandBuilder(self._commands + '\n' + other._commands + '\n')
+        if self.WORKDIR in other or self.COPY in other:
+            return CommandBuilder(self._commands + other + '\n')
         if self.RUN in self._commands:
             return CommandBuilder(self._commands + other + ' ')
         return CommandBuilder(self._commands + other + '\n')

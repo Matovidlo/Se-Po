@@ -13,6 +13,7 @@ from secpo.docker_configuration import ApparmorDockerImageFactory
 class Configurability(unittest.TestCase):
     WINDOWS = 'nt'
     POSIX = 'posix'
+
     def test_classes(self):
         assert hasattr(self, "path_conf")
         self.assertIsInstance(self.apparmor_factory, ApparmorDockerImageFactory)

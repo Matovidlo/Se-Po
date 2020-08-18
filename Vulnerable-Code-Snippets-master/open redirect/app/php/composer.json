@@ -1,0 +1,7 @@
+
+{
+    "require": {
+		"phan/phan":"@dev",
+		"phpstan/phpstan":"@dev"
+    }
+}

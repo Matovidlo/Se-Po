@@ -1,2 +1,6 @@
-setuptools
-
+pytest
+pytest-docker-pexpect
+pytest-ordering
+pytest-logger
+defusedxml
+PySide2

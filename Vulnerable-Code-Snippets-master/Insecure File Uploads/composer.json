@@ -1,0 +1,7 @@
+
+{
+    "require": {
+		"phpstan/phpstan":"^0.12.37",
+		"phan/phan":"@dev"
+    }
+}

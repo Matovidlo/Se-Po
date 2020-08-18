@@ -213,7 +213,7 @@ class VirtualStarter {
 DOCKER_BUILD
 VAGRANT_BOXES
 +directories
-+deploy_containers()
++create_container()
 +create_boxes()
 +deploy()
 }

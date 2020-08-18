@@ -1,3 +1,3 @@
 [cli]
 bears = PEP8Bear
-files = startpoint/start.py,startpoint/path_operation.py
+files = startpoint/src/secpo/__main__.py,startpoint/src/secpo/path_operation.py
