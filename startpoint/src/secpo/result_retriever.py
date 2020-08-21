@@ -76,7 +76,6 @@ class ResultRetriever:
             print(stdout)
             print(stderr)
 
-
     def _docker_disconnect(self, programming_language):
         cmd = self.DOCKER_DISCONNECT[:3]
         cmd.append(self.DOCKER_DISCONNECT[3].format(network=self.BRIDGE))

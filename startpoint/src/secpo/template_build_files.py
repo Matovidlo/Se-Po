@@ -258,8 +258,37 @@ eslint = """
   }
 }
 """
+vagrant_windows_config = """
+Vagrant.configure("2") do |config|
+    # Change vm box based on the needs in teplate_build_files.py
+    config.vm.box = "gusztavvargadr/windows-10"
+    config.vm.hostname = "winsecpovm"
+    config.vm.post_up_message = "{msg}"
+    config.vm.box_check_update = true
+    # Change IP address in case of colission in installed
+    # template_build_files.py
+    config.vm.network "private_network", ip: "172.168.67.89"
 
-vagrant_config = """
+    # Synced folder where results will be recieved
+    config.vm.synced_folder "{sync_folder}", "/home/vagrant/portability_testing"
+
+    # In case of wrong provider please change it in teplate_build_files.py
+    config.vm.provider "virtualbox" do |vb|
+        vb.name = '{name}'
+        vb.memory = "2048"
+        vb.cpus = "2"
+    end
+    # Here will be paste commands including tools that are necessary to install.
+    config.vm.provision "shell", inline: <<-SHELL
+        yum update -y
+        yum install -y {tools}
+{cmds}
+    SHELL
+
+end
+"""
+
+vagrant_centos_config = """
 Vagrant.configure("2") do |config|
     # Change vm box based on the needs in teplate_build_files.py
     config.vm.box = "centos/7"

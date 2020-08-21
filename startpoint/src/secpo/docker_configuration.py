@@ -19,14 +19,14 @@ class DirectoryToImageAndTools(Enum):
     CL = {'CL': 'ubuntu', 'os_tools': ['cppcheck'],
           'specific_tools': [],
           'other': ['WORKDIR /home/C/app',
-                    'RUN cppcheck --enable=all '
-                    '--suppress=missingIncludeSystem . 2> result.txt',
-                    'RUN cat result.txt']}
+                    'RUN cppcheck --xml --enable=all '
+                    '--suppress=missingIncludeSystem . 2> result.xml',
+                    'RUN cat result.xml']}
     CPP = {'CPP': 'ubuntu', 'os_tools': ['cppcheck'],
            'specific_tools': [],
            'other': ['WORKDIR /home/C++/app',
-                     'RUN cppcheck --enable=all '
-                     '--suppress=missingIncludeSystem . 2> result.txt']}
+                     'RUN cppcheck --xml --enable=all '
+                     '--suppress=missingIncludeSystem . 2> result.xml']}
     CS = {'CS': 'vagrant', 'os_tools': ['Roslynator'],
           'specific_tools': [],
           'other': [],}
@@ -92,8 +92,8 @@ class DirectoryToImageAndTools(Enum):
               'specific_tools': [],
               'other': ['WORKDIR /usr/src/app',
                         'COPY requirements.txt ./',
-                        # 'RUN pip install --no-cache-dir -r requirements.txt',
-                        # 'RUN pip install bandit jedi',
+                        'RUN pip install --no-cache-dir -r requirements.txt',
+                        'RUN pip install bandit jedi',
                         'RUN python2 -m ensurepip --default-pip',
                         'RUN pip2 install --no-cache-dir -r requirements.txt',
                         'RUN pip2 install bandit jedi',

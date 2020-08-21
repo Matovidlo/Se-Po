@@ -135,8 +135,8 @@ def console_main():
     facade = RunFacade()
     facade.list_filters()
     try:
-        asyncio.run(facade.docker_operation())
-        # asyncio.run(facade.vagrant_operation())
+        # asyncio.run(facade.docker_operation())
+        asyncio.run(facade.vagrant_operation())
     except KeyboardInterrupt:
         facade.kill_processes()
         raise

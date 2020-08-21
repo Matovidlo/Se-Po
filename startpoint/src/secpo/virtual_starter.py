@@ -27,7 +27,7 @@ class VirtualStarter:
     VBOXMANAGE_CONTROLVM = 'vboxmanage controlvm {name} poweroff'
     VBOXMANAGE_UNREGISTERVM = 'vboxmanage unregistervm --delete {name}'
     # Return constants
-    SUCCESSFUL = "Successfully built"
+    SUCCESSFUL = "Successfully tagged"
     COPY_ERROR = "COPY failed:"
     DAEMON_ERROR = "Error response from daemon:"
     ERROR = "E: "

@@ -9,6 +9,7 @@ dist/
 lib/
 lib64/
 share/
+venv/
 
 **.pyc
 **.pyo

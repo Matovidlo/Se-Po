@@ -7,18 +7,29 @@ class PathArguments {
 PathArguments --|> argparse.ArgumentParser
 
 class PathOperation {
-PATH_DEPTH
+EXTENSIONS
+TOOLS
 DOCKERFILE
+VAGRANTFILE
+WELCOME_MESSAGE
+VM_NAME
+HIDDEN_FILES
+SPECIAL_FILES
+DOCKER_RM
+VAGRANT_RM
 +input_files : list[Path]
 +input_directories : list[Path]
 #_directories : set
 +cwd : Path
 #_is_logging_enabled : bool
-#_filters : list
+#_path_components -> path_components
+#_images -> images
+#_logging -> logging
+#_filters -> filters
 #_custom_configuration : Path
 
-+__init__()
-+directories() -> _directories
++__init__(command_line_args=None)
++path_components() -> _path_components
 +logging() -> _is_logging_enabled
 +custom_configuration() -> _custom_configuration
 +filters() -> _filters
@@ -29,8 +40,15 @@ DOCKERFILE
 +load_filters()
 +add_configuration()
 +create_configuration_files()
++list_analysed_files(path)
++write_specific_package_file(command, path,
+tools)
 +write_configuration(configuration)
 +delete_configurations()
++delete_result_directory()
++destroy_images(tags)
++destroy_boxes()
++destroy_everyting(tags)
 }
 
 PathOperation --> PathArguments
@@ -72,6 +90,17 @@ CustomizedApparmorProfile ..|> AbstractProfile
 newpage
 
 abstract class AbstractDockerImageFactory {
+APK
+APTGET
+DNF
+YUM
+BREW
+COMPOSER
+GEM
+GRADLE
+NPM
+PIP
+STACK
 #_image
 #_package_manager
 +{abstract}__init__(cls_object)
@@ -88,7 +117,7 @@ class ApparmorDockerImageFactory {
 SECCOMP
 MAC
 +^create_image(operation_system,
-allowed_os, version)
+allowed_os, version=None)
 +^create_seccomp_profile()
 +^create_mac_profile()
 +^unix_setup()
@@ -98,7 +127,7 @@ class CustomDockerImageFactory {
 SECCOMP
 MAC
 +^create_image(operation_system,
-               allowed_os, version)
+               allowed_os, version=None)
 +^create_seccomp_profile()
 +^create_mac_profile()
 +^unix_setup()
@@ -112,7 +141,7 @@ AbstractDockerImageFactory --> DirectoryToImageAndTools
 AbstractDockerImageFactory ..> AbstractProfile
 
 enum DirectoryToImageAndTools {
-C
+CL
 CPP
 CS
 GO
@@ -126,7 +155,7 @@ OPENCL
 PHP
 PROLOG
 PYTHON
-R
+RL
 RUBY
 RUST
 SCALA
@@ -136,6 +165,51 @@ SQL
 
 newpage
 
+
+abstract class AbstractToolset {
+RUN
+COPY
+INSTALL
+UPDATE
+RECOMMENDS
+APT_GET_CLEAN_REGISTRY
+APK_CLEAN_REGISTRY
+NPM
+#_package_manager
+#_program_program_package_installer
+#_os_tools
+#_specific_tools
+#_other_commands
++first_tool
++{abstract} __init__(package_manager, program_package_installer, os_tools,
+specific_tools, other_commands)
+-__add__(other)
+-__iter__()
+-__next__()
++specific_tools()
++{abstract} specify_tools(tools)
+#_update_packages()
+#_clean_registry()
+#_add_specific_tools()
+#_add_other_commands()
++{abstract} install() -> CommandBuilder
+}
+
+' Here starts general tools
+class GeneralToolset {
+}
+
+class CommandBuilder {
+#_commands -> str
++__init__(*args)
+-__add__(other) -> CommandBuilder
+-__str__() -> str
+}
+
+GeneralToolset --|> AbstractToolset
+AbstractToolset --> CommandBuilder
+
+newpage
 ' End of Abstract profile along with docker image factory
 abstract class AbstractDockerImageFactory
 
@@ -147,48 +221,54 @@ class CommandBuilder {
 }
 
 
-abstract class AbstractDockerConfiguration {
+abstract class AbstractDockerSecurity {
 CPP = 'C++'
 CS = 'C#'
-+directory
++enum_directory
 +image
-+default_tools
++os_tools
++specific_tools
++other_commands
++docker_workdir
 +{abstract} __init__()
-+convert_directory_to_image(directory)
-+{abstract} create_image(directory)
-+{abstract} create_toolset(package_manager, tools=None)
-}
-
-abstract class AbstractToolset {
-RUN
-INSTALL
-#_package_manager
-#_tools
-+first_tool
-+{abstract} __init__(package_manager, tools)
--__add__(other)
--__iter__()
--__next__()
-+{abstract} specify_tools(tools)
-+{abstract} install() -> CommandBuilder
-}
-
-' Here starts general tools
-class GeneralToolset {
++convert_directory_to_image(programming_language)
++{abstract} create_image_factory(programming_language)
++{abstract} create_toolset(package_manager, program_package_installer=None,
+os_tools=None, specific_tools=None, other_commands=None)
 }
 
 class SimpleSecurity {
-+^create_image(directory)
+ALLOWED_OS
+PHP
+PHP_VERSION
++^create_image_factory(programming_language)
++^create_toolset(package_manager, program_package_installer,
+os_tools, specific_tools, other_commands)
 }
 class CustomizedSecurity {
-+^create_image(directory)
+ALLOWED_OS
++^create_image_factory(programming_language)
++^create_toolset(package_manager, program_package_installer,
+os_tools, specific_tools, other_commands)
 }
 
 class ResultRetriever {
+DOCKER_CP
+BRIDGE
+DOCKER_DISCONNECT
+VAGRANT_SSH
+VAGRANT_SCP
+RESULT_FILE
+SUFFIXES
+#_config_creator
 +security_results
 +portability_results
 +highlighter
 +__init__(result_highlighter)
+#_exec_cmd(cmd, input_cmds, **kwargs),
+#_docker_disconnect(programming_language)
++retrieve_docker(path, programming_language)
++retrieve_vagrant(path)
 +retrieve()
 +perform_filter()
 }
@@ -205,17 +285,28 @@ class ResultHighlighter {
 ResultRetriever --> ResultHighlighter
 
 
-GeneralToolset --|> AbstractToolset
-SimpleSecurity --|> AbstractDockerConfiguration
-CustomizedSecurity --|> AbstractDockerConfiguration
+SimpleSecurity --|> AbstractDockerSecurity
+CustomizedSecurity --|> AbstractDockerSecurity
 
 class VirtualStarter {
 DOCKER_BUILD
+DOCKER_CREATE
+DOCKER_PRUNE
 VAGRANT_BOXES
+VAGRANT_DESTROY
+VBOXMANAGE_LISTVM
+VBOXMANAGE_CONTROLVM
+VBOXMANAGE_UNREGISTERVM
+#_processes
 +directories
-+create_container()
-+create_boxes()
-+deploy()
++tags
++async log_output(process)
++async create_containers(path, tag)
++async create_box(path)
++async deploy()
++kill_processes()
++prune()
++vagrant_destroy()
 }
 
 class ConfigCreator {
@@ -223,16 +314,22 @@ LOW
 HIGH
 POSIX
 WINDOWS
++path_components
++images_enum
++docker_conf
++base_image
++image_factory
++profiles
++toolset
 
 +__init__(directories,
 image, security_level)
 +unroll_path()
 +create_configuration()
 }
-AbstractToolset --> CommandBuilder
-AbstractDockerConfiguration ..> AbstractDockerImageFactory
-AbstractDockerConfiguration ..> AbstractToolset
-ConfigCreator ..> AbstractDockerConfiguration
+AbstractDockerSecurity ..> AbstractDockerImageFactory
+AbstractDockerSecurity ..> AbstractToolset
+ConfigCreator ..> AbstractDockerSecurity
 ConfigCreator --> PathOperation
 ConfigCreator --> CommandBuilder
 
@@ -241,9 +338,12 @@ class RunFacade {
 #_config_subsystem -> ConfigCreator
 #_run_subsystem -> VirtualStarter
 #_result_subsystem -> ResultRetriever
-+docker_operation()
-+vagrant_operation()
++async docker_operation()
++async vagrant_operation()
 +operation()
++list_filters()
++kill_processes()
++delete_configurations()
 }
 
 RunFacade --* ConfigCreator

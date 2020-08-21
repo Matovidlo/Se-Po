@@ -12,7 +12,7 @@ import subprocess
 
 from secpo.analysis_commands import RunAnalysisCommands
 from secpo.template_build_files import kotlin_gradle, requirements_txt, \
-    vagrant_config, Gemfile, composer_json, eslint
+    vagrant_centos_config, vagrant_windows_config, Gemfile, composer_json, eslint
 
 
 class ProgramTypes(Enum):
@@ -314,22 +314,41 @@ class PathOperation:
         if out:
             out = out[0]
             special_file = path / self.SPECIAL_FILES.get(out)[0]
-            tools = []
+            found_tools = []
             if tools:
                 for tool in tools.specific_tools:
                     # Remove last newline
                     if isinstance(tool, tuple):
-                        tools.append("\t\t\"" + tool[0] + "\":\"" + tool[1]
+                        found_tools.append("\t\t\"" + tool[0] + "\":\"" + tool[1]
                                         + "\",\n")
                     else:
-                        tools.append(self.SPECIAL_FILES.get(out)[1] + " \'" + tool + "\'")
+                        found_tools.append(self.SPECIAL_FILES.get(out)[1] + " \'" + tool + "\'")
                     # todo:
                     # else:
                     #     packages.append("\t\t\"" + tool + "\":\"@dev\",\n")
                 special_file.write_text(self.SPECIAL_FILES.get(out)[2]
-                                        .format('\n\t'.join(tools)))
+                                        .format('\n\t'.join(found_tools)))
             else:
                 special_file.write_text(self.SPECIAL_FILES.get(out)[2])
+
+    def _set_vagrant_config(self, path, vm_identifier, compilation_tools,
+                            vagrant_cmds):
+        output = ''
+        if os.name == 'nt':
+            output = vagrant_centos_config.format(msg=self.WELCOME_MESSAGE,
+                                                  sync_folder=path,
+                                                  name=self.VM_NAME
+                                                       + str(vm_identifier),
+                                                  tools=' '.join(compilation_tools),
+                                                  cmds=vagrant_cmds)
+        elif os.name == 'posix':
+            output = vagrant_windows_config.format(msg=self.WELCOME_MESSAGE,
+                                                   sync_folder=path,
+                                                   name=self.VM_NAME
+                                                        + str(vm_identifier),
+                                                   tools=' '.join(compilation_tools),
+                                                   cmds=vagrant_cmds)
+        return output
 
     def write_configuration(self, configuration):
         # Write docker configuration
@@ -355,12 +374,8 @@ class PathOperation:
                                  self.path_components.keys()
                                  if
                                  path in self.path_components.get(identifier)][0]
-                output = vagrant_config.format(msg=self.WELCOME_MESSAGE,
-                                               sync_folder=str(path.resolve()),
-                                               name=self.VM_NAME
-                                                    + str(vm_identifier),
-                                               tools=' '.join(compilation_tools),
-                                               cmds=vagrant_cmd)
+                output = self._set_vagrant_config(path.resolve(), vm_identifier,
+                                                  compilation_tools, vagrant_cmd)
                 write_file.write(output)
 
     def delete_configurations(self):

@@ -15,13 +15,14 @@ import time
 import threading
 
 import PySide2
+from PySide2.QtWebEngineWidgets import QWebEngineView
 from PySide2.QtWidgets import (QApplication, QLabel, QPushButton, QAction,
-                               QFormLayout, QFileSystemModel,
+                               QFormLayout, QFileSystemModel, QTextBrowser,
                                QWidget, QFileDialog, QMenuBar,
                                QProgressDialog, QDialog, QHBoxLayout)
-from PySide2.QtCore import Slot, Qt, QSortFilterProxyModel, QIdentityProxyModel, \
-  QThread, QObject
-from PySide2.QtGui import QIcon, QKeySequence
+from PySide2.QtCore import Qt, QSortFilterProxyModel, QIdentityProxyModel, \
+  QThread, QObject, QUrl
+from PySide2.QtGui import QIcon, QKeySequence, QTextDocument
 from secpo.path_operation import ProgramTypes
 from secpo.run_facade import divide_chunks
 
@@ -52,6 +53,9 @@ class DirFileFilterProxyModel(QSortFilterProxyModel):
 
 class Worker(QObject):
     RED_COLOR = '\033[91m{}\033[00m'
+    SUCCESSFUL = "Successfully built"
+    DELETED_CONTAINERS = "Deleted Containers:"
+    TOTAL_RECLAIMED_SPACE = "Total reclaimed space:"
 
     def __init__(self, parent, file_names, queues):
         super(Worker, self).__init__()
@@ -113,8 +117,10 @@ class Worker(QObject):
         while True:
             if self._check_end(process):
                 break
-            if self.parent.SUCCESSFUL in stdout.decode('utf-8') or\
-               stderr.decode('utf-8'):
+            # End of docker build
+            if self.DELETED_CONTAINERS in stdout.decode('utf-8'):
+                self.log_output_fill_queue(stdout, stderr)
+            if self.TOTAL_RECLAIMED_SPACE in stdout.decode('utf-8'):
                 process.wait()
                 stdout, stderr = process.communicate()
                 self.log_output_fill_queue(stdout, stderr)
@@ -148,8 +154,13 @@ class Worker(QObject):
 class MyWidget(QWidget):
     MAX_SHOWN_LINES = 10
     PROCESS_NUMBER = 2
-    SUCCESSFUL = "Successfully built"
     STOP_THREADS = False
+    # Files
+    APP_DIR = 'app'
+    HTML = '.html'
+    XML = '.xml'
+    TXT = '.txt'
+    EXTENSIONS = [TXT, XML, HTML]
 
     def __init__(self):
         QWidget.__init__(self)
@@ -166,6 +177,7 @@ class MyWidget(QWidget):
         self.processes = []
         self.thread = None
         self.show_steps_thread = None
+        self.web_views = []
 
         # Create Menu bar
         self.setWindowTitle("Sec&Po testing framework")
@@ -187,10 +199,14 @@ class MyWidget(QWidget):
         # Connecting the signal
         self.finish_button.clicked.connect(self.run_testing)
 
+        self.results_label = QLabel("No results")
+        self.show_results_button = QPushButton("&Show results")
+        self.show_results_button.clicked.connect(self.load_html_result)
+
         # Create file dialog
         self.file_dialog = QFileDialog(self)
         # fixme: debug for pycharm
-        self.file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # self.file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         self.file_dialog.setFileMode(QFileDialog.ExistingFiles)
         file_filters = ["All files files (*)"]
         for value in ProgramTypes:
@@ -219,6 +235,8 @@ class MyWidget(QWidget):
         self.layout.addRow(self.main_menu)
         self.finish_button.setFixedSize(250, 65)
         self.layout.addRow(self.selected_files, self.finish_button)
+        self.show_results_button.setFixedSize(250, 65)
+        self.layout.addRow(self.results_label, self.show_results_button)
         self.setLayout(self.layout)
 
     def create_file_actions(self):
@@ -296,6 +314,11 @@ class MyWidget(QWidget):
     def seccomp_conf(self):
         pass
 
+    def check_result_dir(self, file_name):
+        result_dir = file_name.parent / self.APP_DIR
+        if result_dir.exists():
+            self.results_label.setText("Results present")
+
     def open(self):
         output = 'No files chosen!'
         self.file_names = []
@@ -311,11 +334,37 @@ class MyWidget(QWidget):
                 if cnt < self.MAX_SHOWN_LINES and file_name:
                     # Correct the path
                     absolute_path = pathlib.Path(file_name)
+                    self.check_result_dir(absolute_path)
                     output += str(pathlib.Path(absolute_path.parts
                                                [len(absolute_path.parts) - 2])\
                                   / pathlib.Path(absolute_path.name)) + '\n'
                     cnt += 1
         self.selected_files.setText(output + "\n")
+
+    def open_single_result_view(self, result_file):
+        if isinstance(self.web_views[-1], QWebEngineView):
+            self.web_views[-1].load(QUrl(result_file.as_uri()))
+            self.web_views[-1].showMaximized()
+        elif isinstance(self.web_views[-1], QTextBrowser):
+            text_doc = QTextDocument()
+            self.web_views[-1].setDocument(text_doc)
+            self.web_views[-1].setSource(QUrl(result_file.as_uri(),
+                                              QUrl.ParsingMode.TolerantMode))
+            self.web_views[-1].show()
+
+    def load_html_result(self):
+        for file in self.file_names:
+            root_dir = pathlib.Path(file).parent
+            root_dir /= self.APP_DIR
+            if root_dir.exists():
+                for extension in self.EXTENSIONS:
+                    result_files = root_dir.glob('**/*' + extension)
+                    for result_file in result_files:
+                        if extension == self.HTML or extension == self.XML:
+                            self.web_views.append(QWebEngineView())
+                        elif extension == self.TXT:
+                            self.web_views.append(QTextBrowser())
+                        self.open_single_result_view(result_file)
 
     def show_steps(self, progress):
         while True:
@@ -323,8 +372,9 @@ class MyWidget(QWidget):
             if not self.queues[0].empty():
                 steps = self.queues[0].get()
                 progress.setValue(steps.value)
-                if steps.value == len(self.file_names):
+                if steps.value == len(self.file_names) * 2:
                     self.thread.quit()
+                    self.check_result_dir(pathlib.Path(self.file_names[0]))
                     break
             if self.STOP_THREADS:
                 break
@@ -352,11 +402,9 @@ class MyWidget(QWidget):
         self.queues = [multiprocessing.Queue(maxsize=self.PROCESS_NUMBER),
                        multiprocessing.Queue(maxsize=self.PROCESS_NUMBER)]
         self.STOP_THREADS = False
-
-        # todo: show results after successfull run
         progress = QProgressDialog("Starting Docker and VMs",
                                    "Abort start", 0,
-                                   len(self.file_names),
+                                   len(self.file_names) * 2,
                                    self)
         progress.canceled.connect(self.cancel)
         progress.setWindowModality(Qt.WindowModal)
@@ -379,6 +427,7 @@ class MyWidget(QWidget):
     def closeEvent(self, event:PySide2.QtGui.QCloseEvent):
         event.ignore()
         super(MyWidget, self).closeEvent(event)
+        # Indicate end of program
         if self.thread:
             self.thread.quit()
             self.thread.wait()
