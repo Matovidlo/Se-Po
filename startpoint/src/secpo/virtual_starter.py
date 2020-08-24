@@ -29,6 +29,7 @@ class VirtualStarter:
     # Return constants
     SUCCESSFUL = "Successfully tagged"
     COPY_ERROR = "COPY failed:"
+    MANIFEST_ERROR = "manifest unknown"
     DAEMON_ERROR = "Error response from daemon:"
     ERROR = "E: "
     RETURN_NON_ZERO = "returned a non-zero code:"
@@ -77,6 +78,7 @@ class VirtualStarter:
         while True:
             if self.SUCCESSFUL in stdout.decode('utf-8') or \
                self.ERROR in stdout.decode('utf-8') or \
+               self.MANIFEST_ERROR  in stderr.decode('utf-8') or \
                self.RETURN_NON_ZERO in stderr.decode('utf-8') or \
                self.COPY_ERROR in stderr.decode('utf-8') or \
                self.DAEMON_ERROR in stderr.decode('utf-8'):
@@ -165,7 +167,10 @@ class VirtualStarter:
             if process:
                 spawned_pid = process.pid
                 try:
-                    os.kill(spawned_pid + 1, signal.SIGINT)
+                    if os.name == 'nt':
+                        os.system("taskkill /pid " + spawned_pid + 1)
+                    elif os.name =='posix':
+                        os.kill(spawned_pid + 1, signal.SIGINT)
                 except ProcessLookupError:
                     continue
                 process.kill()

@@ -19,6 +19,7 @@ class ResultRetriever:
     DOCKER_DISCONNECT = ['docker', 'network', 'disconnect', '{network}',
                          '{cont_id}']
     # Vagrant commands
+    VAGRANT_PROVISION = ['vagrant', 'provision']
     VAGRANT_SSH = ['vagrant', 'ssh']
     VAGRANT_SCP = ['vagrant', 'scp', '{vm_name}:{src}', '{dst}']
     RESULT_FILE = 'result'
@@ -73,8 +74,10 @@ class ResultRetriever:
                     process.kill()
                     break
             stdout, stderr = process.communicate()
-            print(stdout)
-            print(stderr)
+            if stdout:
+                print(stdout.decode('utf-8'))
+            if stderr:
+                print(stderr.decode('utf-8'))
 
     def _docker_disconnect(self, programming_language):
         cmd = self.DOCKER_DISCONNECT[:3]
@@ -114,8 +117,13 @@ class ResultRetriever:
         """
         env = os.environ.copy()
         env['VAGRANT_CWD'] = str(path)
+        cmd = self.VAGRANT_PROVISION
+        self._exec_cmd(cmd, env=env)
         cmd = self.VAGRANT_SSH
-        self._exec_cmd(cmd, [b'ls -al', b'pwd', b'exit'], env=env)
+        if os.name == 'posix':
+            self._exec_cmd(cmd, [b'dir', b'echo %cd%', b'exit'], env=env)
+        elif os.name == 'nt':
+            self._exec_cmd(cmd, [b'ls -al', b'pwd', b'exit'], env=env)
         cmd = self.VAGRANT_SCP[:2]
         # cmd.append(self.VAGRANT_SCP[2].format(vm_name=PathOperation.VM_NAME,
         #                                       src=)])

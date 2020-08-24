@@ -138,7 +138,7 @@ class DirectoryToImageAndTools(Enum):
                      'RUN gem install sqlint']}
     SHELL = {'SHELL': 'bash', 'os_tools': ['shellcheck'],
              'specific_tools': [],
-             'other': []}
+             'other': ['WORKDIR /home/sh/app']}
 
 
 class AbstractDockerSecurity(metaclass=ABCMeta):
@@ -217,11 +217,13 @@ class SimpleSecurity(AbstractDockerSecurity):
     Implement operations of docker configuration to create simple security config.
     """
     ALLOWED_OS = ['ubuntu', 'python', 'ruby', 'haskell', 'sql', 'java', 'go',
-                  'php', 'node']
+                  'php', 'node', 'bash']
     PHP = 'PHP'
+    SHELL = 'SHELL'
     JAVASCRIPT = 'JAVASCRIPT'
     PHP_VERSION = '7.4-cli'
     MAINLINE = 'mainline'
+    BASH_VERSION = '5'
 
     def __init__(self):
         super(SimpleSecurity, self).__init__()
@@ -232,9 +234,9 @@ class SimpleSecurity(AbstractDockerSecurity):
         if self.PHP in prog_language:
             image_factory.create_image(self.image, self.ALLOWED_OS,
                                        self.PHP_VERSION)
-        # elif self.JAVASCRIPT in prog_language:
-        #     image_factory.create_image(self.image, self.ALLOWED_OS,
-        #                                self.MAINLINE)
+        elif self.SHELL in prog_language:
+            image_factory.create_image(self.image, self.ALLOWED_OS,
+                                       self.BASH_VERSION)
         else:
             image_factory.create_image(self.image, self.ALLOWED_OS)
         return image_factory
@@ -485,7 +487,7 @@ class ConfigCreator:
                         # Skip profiles when not specified
                         if not profile:
                             continue
-                        profile.create_profile()
+                        dockerfile_configuration.append(profile.create_profile())
                         profile.parse_profile()
             return zip(dockerfile_location, dockerfile_configuration)
         return _setup_dockerfile

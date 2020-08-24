@@ -26,6 +26,7 @@ class AbstractDockerImageFactory(metaclass=ABCMeta):
     JAVA = 'java'
     PHP = 'php'
     RUBY = "ruby"
+    SHELL = 'bash'
     FROM = 'FROM '
 
     ALPINE = ':alpine'
@@ -83,7 +84,7 @@ class AbstractDockerImageFactory(metaclass=ABCMeta):
             self._package_manager = self.YUM
         elif self._image in [self.FEDORA]:
             self._package_manager = self.DNF
-        elif self._image in [self.PYTHON, self.JAVA]:
+        elif self._image in [self.PYTHON, self.SHELL, self.JAVA]:
             self._package_manager = self.APK
             if self._image in self.PYTHON:
                 self._program_package_installer = self.PIP

@@ -6,13 +6,14 @@ import argparse
 from defusedxml.ElementTree import parse
 from enum import Enum
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import shutil
 import subprocess
 
 from secpo.analysis_commands import RunAnalysisCommands
 from secpo.template_build_files import kotlin_gradle, requirements_txt, \
-    vagrant_centos_config, vagrant_windows_config, Gemfile, composer_json, eslint
+    vagrant_centos_config, vagrant_windows_config, Gemfile, composer_json, \
+    eslint, setup_ps1
 
 
 class ProgramTypes(Enum):
@@ -20,7 +21,8 @@ class ProgramTypes(Enum):
     Class is enumeration of programing language with directory associated as key
     and value as suffix of files associated with programming language.
     """
-    CL = {'extensions': ['.c', '.h'], 'tools': ['gcc']}
+    CL = {'extensions': ['.c', '.h'], 'tools': ['gcc'],
+          'windows_tools': ['mingw']}
     CPP = {'extensions': ['.cpp', '.cxx', '.hpp', '.h', '.hxx'], 'tools': ['g++']}
     CS = {'extensions': ['.cs'], 'tools': ['csc']}
     GO = {'extensions': ['.go'], 'tools': ['go']}
@@ -39,6 +41,7 @@ class ProgramTypes(Enum):
     RUST = {'extensions': ['.rs'], 'tools': ['rustc']}
     SCALA = {'extensions': ['.scala'], 'tools': ['scala']}
     SMALLTALK = {'extensions': ['.st'], 'tools': ['pharo']}
+    SHELL = {'extensions': ['.sh'], 'tools': ['sh']}
     SQL = {'extensions': ['.sql'], 'tools': ['sql']}
 
 
@@ -91,9 +94,11 @@ class PathOperation:
     # Used for ProgramType selection
     EXTENSIONS = 'extensions'
     TOOLS = 'tools'
+    WINDOWS_TOOLS = 'windows_tools'
     # Virtualization files
     DOCKERFILE = 'Dockerfile'
     VAGRANTFILE = 'Vagrantfile'
+    POWERSHELLFILE = 'setup.ps1'
     VAGRANT_RESULT_DIR = 'vagrant_result'
     WELCOME_MESSAGE = "Welcome to portability testing using vagrant."
     VM_NAME = 'secpo'
@@ -188,9 +193,15 @@ class PathOperation:
             for program_type in ProgramTypes:
                 for extension in program_type.value[self.EXTENSIONS]:
                     if file.suffix == extension:
-                        self._path_components[program_type.name] = \
+                        if self.WINDOWS_TOOLS in program_type.value:
+                            self._path_components[program_type.name] = \
                             [self.cwd / file.parent,
-                             program_type.value[self.TOOLS]]
+                             program_type.value[self.TOOLS],
+                             program_type.value[self.WINDOWS_TOOLS]]
+                        else:
+                            self._path_components[program_type.name] = \
+                                [self.cwd / file.parent,
+                                 program_type.value[self.TOOLS]]
 
     def resolve_containers(self):
         """
@@ -210,15 +221,25 @@ class PathOperation:
                     files_and_dirs = directory.glob('**/*' + extensions)
                     files = [x for x in files_and_dirs if x.is_file()]
                     if files:
+                        # Remove hidden files from files
                         for file in files:
                             if self.HIDDEN_FILES in file.parts:
                                 files.remove(file)
+                        # When no other files left continue next file extension
+                        if not files:
+                            continue
                         # Add from current working directory path to
                         # concrete folder where are located virtual
                         # machines and docker containers prescription.
-                        self._path_components[program_type.name] = \
-                            [self.cwd / files[0].parent,
-                             program_type.value[self.TOOLS]]
+                        if self.WINDOWS_TOOLS in program_type.value:
+                            self._path_components[program_type.name] = \
+                                [self.cwd / file.parent,
+                                 program_type.value[self.TOOLS],
+                                 program_type.value[self.WINDOWS_TOOLS]]
+                        else:
+                            self._path_components[program_type.name] = \
+                                [self.cwd / file.parent,
+                                 program_type.value[self.TOOLS]]
         if not self._path_components:
             print("No path was selected!")
             exit(1)
@@ -286,18 +307,26 @@ class PathOperation:
         for file_filter in file_filters:
             for extension in ProgramTypes[file_filter].value[self.EXTENSIONS]:
                 files_and_dirs = path.glob("**/*" + extension)
-                files = [x for x in files_and_dirs if x.is_file()]
+                for file in files_and_dirs:
+                    if file.is_file():
+                        files.append(file)
         # Get all file names as single string line
         compilation_tools = [dir for dir in self.path_components.values()
-                             if path is dir[0]][0][1]
+                             if path is dir[0]][0][1:]
         file_names = ""
         vagrant_cmd = ""
         for file in files:
             file_names += ' ' + file.name
-            vagrant_pwd = './portability_testing/'
+            vagrant_pwd = None
+            if os.name == 'posix':
+                vagrant_pwd = Path('C:/Users/vagrant/portability_testing/')
+                vagrant_pwd = Path(vagrant_pwd / file.name)
+            elif os.name == 'nt':
+                vagrant_pwd = Path('./portability_testing/')
+                vagrant_pwd = Path(vagrant_pwd / file.name)
             vagrant_cmd += RunAnalysisCommands['VAGRANT_CMD'].value \
-                .format(tool=compilation_tools[0], options='',
-                        files=vagrant_pwd + file.name)
+                .format(tool=compilation_tools[0][0], options='',
+                        files=str(vagrant_pwd))
         # Create command from listed files, only if it exists in
         # analysis_commands.py file.
         for file_filter in file_filters:
@@ -338,15 +367,25 @@ class PathOperation:
             output = vagrant_centos_config.format(msg=self.WELCOME_MESSAGE,
                                                   sync_folder=path,
                                                   name=self.VM_NAME
-                                                       + str(vm_identifier),
-                                                  tools=' '.join(compilation_tools),
+                                                  + str(vm_identifier),
+                                                  tools=' '
+                                                  .join(compilation_tools),
                                                   cmds=vagrant_cmds)
         elif os.name == 'posix':
+            # Setup windows tools for windows installation in vagrant environment
+            # using chockolatey package manager
+            powershell_out = setup_ps1.format(
+                tools=' '.join(compilation_tools[0]))
+            if len(compilation_tools) > 1:
+                powershell_out = setup_ps1.format(
+                        tools=' '.join(compilation_tools[1]))
+            shell_path = path / self.POWERSHELLFILE
+            with shell_path.open('w') as f:
+                f.write(powershell_out)
             output = vagrant_windows_config.format(msg=self.WELCOME_MESSAGE,
                                                    sync_folder=path,
                                                    name=self.VM_NAME
-                                                        + str(vm_identifier),
-                                                   tools=' '.join(compilation_tools),
+                                                   + str(vm_identifier),
                                                    cmds=vagrant_cmds)
         return output
 
@@ -393,6 +432,10 @@ class PathOperation:
                 path = component[0] / value[0]
                 if path.exists():
                     path.unlink()
+            if os.name == 'posix':
+                powershell_path = component[0] / self.POWERSHELLFILE
+                if powershell_path.exists():
+                    powershell_path.unlink()
 
     def delete_result_directory(self):
         for component in self.path_components:
